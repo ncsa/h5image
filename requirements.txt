@@ -1,0 +1,7 @@
+# for h5image we need the following libraries
+numpy
+opencv-python
+h5py
+
+# for testcode and examples we need matplotlib
+matplotlib

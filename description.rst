@@ -1,26 +1,26 @@
-# h5image
-
 This package provides standard functions for interacting with HDF5 files as
 part of the CriticalMAAS project.
 
 This package will create HDF5 files with the following structure:
 
+```
 - group : all data associated with a single map
-    - `json` : the raw json file used to create the map and layers
-    - `map` : the actual map image
-        - `data` : the actual bytes of the image
-        - `corners` : the corners of the map where layers have data
-        - `patches` : for each layer (key) a list of patches as a tuple (x, y)
-        - `layers_patch` : for each patch (key is x_y) a list of layers
-        - `valid_patche`  : a list of locations across all layers as a tuple (x, y)
-    - `<layer>` : a layer of the map, the name of the layer is the name of file
-        - `data` : the actual layer data
-        - `patches` : a list of patches as a tuple (x, y) for this specific layer
+    - json : the raw json file used to create the map and layers
+    - map : the actual map image
+        - data : the actual bytes of the image
+        - corners : the corners of the map where layers have data
+        - patches : for each layer (key) a list of patches as a tuple (x, y)
+        - layers_patch : for each patch (key is x_y) a list of layers
+        - valid_patches : a list of locations across all layers as a tuple (x, y)
+    - <layer> : a layer of the map, the name of the layer is the name of file
+        - data : the actual layer data
+        - patches : a list of patches as a tuple (x, y) for this specific layer
+```
 
 Installation
 ------------
 
-Install using pip:
+Install using pip
 
 ```
 pip install h5image
