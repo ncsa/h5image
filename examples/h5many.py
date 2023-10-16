@@ -19,7 +19,7 @@ jobspatch = 30
 ######################################################################
 def setup():
     mapsh5i = {}
-    for file in glob.glob("hdf/256/*.hdf5"):
+    for file in glob.glob("/projects/bbym/shared/data/commonPatchData/256/*.hdf5"):
         mapname = os.path.basename(file).replace(".hdf5", "")
         mapsh5i[mapname] = H5Image(file, "r")
     return mapsh5i
