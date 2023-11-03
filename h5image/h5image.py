@@ -53,7 +53,7 @@ class H5Image:
         :param group: parent folder of image
         :return: dataset of image loaded (numpy array)
         """
-        with (rasterio.open(filename) as src):
+        with rasterio.open(filename) as src:
             profile = src.profile
             image = src.read()
             if len(image.shape) == 3:

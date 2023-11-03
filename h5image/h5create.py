@@ -31,7 +31,9 @@ def h5create():
                         help='output folder (default: hdf)')
     parser.add_argument('--patch', type=int, default=256,
                         help='patch size (default: 256)')
-    parser.add_argument('--add-patch', action=argparse.BooleanOptionalAction, default=True,
+    parser.add_argument('--add-patch', action='store_true', default=True,
                         help='add patch size to output folder (default: True)')
+    parser.add_argument('--no-add-patch', dest='add-patch', action='store_false',
+                        help="don't add patch size to output folder (default: False)")
     args = parser.parse_args()
     h5convert(args.input, args.output, args.patch, args.add_patch)
