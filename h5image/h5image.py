@@ -150,14 +150,15 @@ class H5Image:
             except ValueError as e:
                 logging.warning(f"Error loading {label} : {e}")
         valid_patches = [[int(k.split('_')[0]), int(k.split('_')[1])] for k in layers_patch.keys()]
-        r1 = min(valid_patches, key=lambda value: int(value[0]))[0]
-        r2 = max(valid_patches, key=lambda value: int(value[0]))[0]
-        c1 = min(valid_patches, key=lambda value: int(value[1]))[1]
-        c2 = max(valid_patches, key=lambda value: int(value[1]))[1]
+        if valid_patches:
+            r1 = min(valid_patches, key=lambda value: int(value[0]))[0]
+            r2 = max(valid_patches, key=lambda value: int(value[0]))[0]
+            c1 = min(valid_patches, key=lambda value: int(value[1]))[1]
+            c2 = max(valid_patches, key=lambda value: int(value[1]))[1]
+            group.attrs.update({'corners': [[r1, c1], [r2, c2]]})
         group.attrs.update({'patches': json.dumps(all_patches)})
         group.attrs.update({'layers_patch': json.dumps(layers_patch)})
         group.attrs.update({'valid_patches': json.dumps(valid_patches)})
-        group.attrs.update({'corners': [[r1, c1], [r2, c2]]})
 
     def save_image(self, mapname, destination, layer=None):
         """
