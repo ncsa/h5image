@@ -8,7 +8,7 @@ long_description = (here / 'description.rst').read_text(encoding='utf-8')
 
 setup(
     name='h5image',
-    version='0.1.0',
+    version='0.2.0',
     description='Load and save images to HDF5 files',
     long_description=long_description,
 
@@ -37,19 +37,20 @@ setup(
     python_requires='>=3.6, <4',
 
     install_requires=[
+        'affine',
         'h5py',
         'numpy',
-        'opencv-python',
+        'rasterio',
     ],
 
     extras_require={  # Optional
-        'dev': ['check-manifest'],
+        'dev': ['matplotlib'],
         'test': ['coverage'],
     },
 
     entry_points={  # Optional
         'console_scripts': [
-            'sample=sample:main',
+            'h5create=h5image:h5create',
         ],
     },
 )

@@ -1,7 +1,8 @@
 # for h5image we need the following libraries
-numpy
-opencv-python
+affine
 h5py
+numpy
+rasterio
 
 # for testcode and examples we need matplotlib
 matplotlib
