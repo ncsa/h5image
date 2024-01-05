@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - [ ] Add ability to read patches using h5folder
 - [ ] Catch exception when reading bad legend
 
+## 0.3.0 - 2024-01-04
+
+### Chnaged
+- now computes tile_size (= patch_size - 2 * patch_border)
+- saves h5image in {patch}/{border}/name.h5
+
 ## 0.2.0 - 2023-11-02
 
 ### Added
