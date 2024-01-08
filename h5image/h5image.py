@@ -17,7 +17,12 @@ class H5Image:
     # initialize the class
     def __init__(self, h5file, mode='r', compression="lzf", patch_size=256, patch_border=3):
         """
-        Create a new H5Image object.
+        Create a new H5Image object. The patches in the file are assumed to be square and will
+        be cropped to the patch size. The patch border is used to add a border around the patch,
+        the tile size is the patch size minus the border. The image will be split in tiles based
+        on the tile size. Any area outside of the image will be filled with 0.
+        If the file is opened as read-only, no images can be added to the file and the patch size,
+        border and compression are ignored.
         :param h5file: filename on disk
         :param mode: set to 'r' for read-only, 'w' for write, 'a' for append
         :param compression: compression type, None for no compression
@@ -26,10 +31,40 @@ class H5Image:
         """
         self.h5file = h5file
         self.mode = mode
-        self.compression = compression
-        self.patch_size = patch_size
-        self.patch_border = patch_border
-        self.h5f = h5py.File(h5file, mode)
+        if mode == 'w':
+            if os.path.exists(h5file):
+                self.h5f = h5py.File(h5file, mode)
+                self.compression = self.h5f['/'].attrs.get('compression', compression.encode('utf-8')).decode('utf-8')
+                if self.compression != compression:
+                    logging.warning(f"compression mismatch, file: {self.compression}, parameter: {compression}, using file value")
+                self.patch_size = self.h5f['/'].attrs.get('patch_size', patch_size)
+                if self.patch_size != patch_size:
+                    logging.warning(f"patch_size mismatch, file: {self.patch_size}, parameter: {patch_size}, using file value")
+                self.patch_border = self.h5f['/'].attrs.get('patch_border', patch_border)
+                if self.patch_border != patch_border:
+                    logging.warning(f"patch_border mismatch, file: {self.patch_border}, parameter: {patch_border}, using file value")
+            else:
+                self.h5f = h5py.File(h5file, mode)
+                self.h5f['/'].attrs.create('compression', compression, dtype=f'S{len(compression)}')
+                self.h5f['/'].attrs.create('patch_size', patch_size, dtype=np.uint16)
+                self.h5f['/'].attrs.create('patch_border', patch_border, dtype=np.uint16)
+                self.compression = compression
+                self.patch_size = patch_size
+                self.patch_border = patch_border                
+        else:
+            if not os.path.exists(h5file):
+                logging.error(f"File not found: {h5file}")
+            self.h5f = h5py.File(h5file, mode)
+            self.compression = self.h5f['/'].attrs.get('compression', compression.encode('utf-8')).decode('utf-8')
+            if self.compression != compression:
+                logging.warning(f"compression mismatch, file: {self.compression}, parameter: {compression}, using file value")
+            self.patch_size = self.h5f['/'].attrs.get('patch_size', patch_size)
+            if self.patch_size != patch_size:
+                logging.warning(f"patch_size mismatch, file: {self.patch_size}, parameter: {patch_size}, using file value")
+            self.patch_border = self.h5f['/'].attrs.get('patch_border', patch_border)
+            if self.patch_border != patch_border:
+                logging.warning(f"patch_border mismatch, file: {self.patch_border}, parameter: {patch_border}, using file value")
+        self.tile_size = self.patch_size - (2 * self.patch_border)
 
     # close the file
     def close(self):
@@ -43,7 +78,52 @@ class H5Image:
         String representation of the object
         :return: string representation
         """
-        return f"H5Image(filename={self.h5file}, mode={self.mode}, maps={len(self.get_maps())})"
+        return f"H5Image(filename={self.h5file}, mode={self.mode}, patch_size={self.patch_size}, patch_border={self.patch_border}, tile_size={self.tile_size}, #maps={len(self.get_maps())})"
+
+    # crop image
+    def _crop_image(self, dset, x, y):
+        """
+        Helper function to crop an image.
+        :param dset: the hdf5 dataset to crop
+        :param x: upper left x coordinate
+        :param y: upper left y coordinate
+        :return: cropped image as numpy array
+        """
+        if x < 0 or x > dset.shape[0]:
+            logging.error(f"Invalid x coordinate {x}")
+            return None
+        if y < 0 or y > dset.shape[1]:
+            logging.error(f"Invalid y coordinate {y}")
+            return None
+        dst_x1 = dst_y1 = 0
+        src_x1 = (x*self.tile_size) - self.patch_border
+        if src_x1 < 0:
+            dst_x1 = -src_x1
+            src_x1 = 0
+        src_x2 = (x*self.tile_size) + self.tile_size + self.patch_border
+        if src_x2 > dset.shape[0]:
+            src_x2 = dset.shape[0]
+        src_y1 = (y*self.tile_size) - self.patch_border
+        if src_y1 < 0:
+            dst_y1 = -src_y1
+            src_y1 = 0
+        src_y2 = (y*self.tile_size) + self.tile_size + self.patch_border
+        if src_y2 > dset.shape[1]:
+            src_y2 = dset.shape[1]
+        dst_x2 = dst_x1 + src_x2 - src_x1
+        dst_y2 = dst_y1 + src_y2 - src_y1
+        src = np.s_[src_x1:src_x2, src_y1:src_y2]
+        dst = np.s_[dst_x1:dst_x2, dst_y1:dst_y2]
+        if len(dset.shape) == 3 and dset.shape[2] == 3:
+            rgb = np.zeros((self.patch_size, self.patch_size, 3), dtype=np.uint8)
+        else:
+            rgb = np.zeros((self.patch_size, self.patch_size), dtype=np.uint8)
+        try:
+            dset.read_direct(rgb, src, dst)
+        except TypeError as e:
+            logging.warn(f"{src_x1}, {src_x2}, {src_y1}, {src_y2}, {dst_x1}, {dst_x2}, {dst_y1}, {dst_y2}")
+            logging.error(f"Error reading {dset.name} : {e}")
+        return rgb
 
     def _add_image(self, filename, name, group):
         """
@@ -53,6 +133,9 @@ class H5Image:
         :param group: parent folder of image
         :return: dataset of image loaded (numpy array)
         """
+        if not os.path.exists(filename):
+            print("File not found", filename)
+            return None
         with rasterio.open(filename) as src:
             profile = src.profile
             image = src.read()
@@ -124,8 +207,8 @@ class H5Image:
 
         # load image
         dset = self._add_image(tiffile, "map", group)
-        w = math.ceil(dset.shape[0] / 256)
-        h = math.ceil(dset.shape[1] / 256)
+        w = math.ceil(dset.shape[0] / self.tile_size)
+        h = math.ceil(dset.shape[1] / self.tile_size)
 
         # loop through shapes
         all_patches = {}
@@ -135,18 +218,15 @@ class H5Image:
             patches = []
             try:
                 dset = self._add_image(f"{prefix}_{label}.tif", label, group)
-                for x in range(w):
-                    for y in range(h):
-                        rgb = self._crop_image(dset,
-                                               x * self.patch_size - self.patch_border,
-                                               y * self.patch_size - self.patch_border,
-                                               (x+1) * self.patch_size + self.patch_border,
-                                               (y+1) * self.patch_size + self.patch_border)
-                        if np.average(rgb, axis=(0, 1)) > 0:
-                            patches.append((x, y))
-                            layers_patch.setdefault(f"{x}_{y}", []).append(label)
-                dset.attrs.update({'patches': json.dumps(patches)})
-                all_patches[label] = patches
+                if dset:
+                    for x in range(w):
+                        for y in range(h):
+                            rgb = self._crop_image(dset, x, y)
+                            if np.average(rgb, axis=(0, 1)) > 0:
+                                patches.append((x, y))
+                                layers_patch.setdefault(f"{x}_{y}", []).append(label)
+                    dset.attrs.update({'patches': json.dumps(patches)})
+                    all_patches[label] = patches
             except ValueError as e:
                 logging.warning(f"Error loading {label} : {e}")
         valid_patches = [[int(k.split('_')[0]), int(k.split('_')[1])] for k in layers_patch.keys()]
@@ -310,40 +390,6 @@ class H5Image:
         """
         return json.loads(self.h5f[mapname].attrs['layers_patch']).get(f"{row}_{col}", [])
 
-    # crop image, this assumes x1 < x2 and y1 < y2
-    @staticmethod
-    def _crop_image(dset, x1, y1, x2, y2):
-        """
-        Helper function to crop an image.
-        :param dset: the hdf5 dataset to crop
-        :param x1: upper left x coordinate
-        :param y1: upper left y coordinate
-        :param x2: lower right x coordinate
-        :param y2: lower right y coordinate
-        :return: cropped image as numpy array
-        """
-        if x1 < 0:
-            x1 = 0
-        w = abs(x2 - x1)
-        if x2 > dset.shape[0]:
-            w = w - (x2 - dset.shape[0])
-            x2 = dset.shape[0]
-        if y1 < 0:
-            y1 = 0
-        h = abs(y2 - y1)
-        if x1 < 0:
-            w = w - x1
-            x1 = 0
-        if y2 > dset.shape[1]:
-            h = h - (y2 - dset.shape[1])
-            y2 = dset.shape[1]
-        if len(dset.shape) == 3 and dset.shape[2] == 3:
-            rgb = np.zeros((w, h, 3), dtype=np.uint8)
-        else:
-            rgb = np.zeros((w, h), dtype=np.uint8)
-        dset.read_direct(rgb, np.s_[x1:x2, y1:y2])
-        return rgb
-
     # get legend from map
     def get_legend(self, mapname, layer):
         """
@@ -379,16 +425,4 @@ class H5Image:
         """
         if row < 0 or col < 0:
             raise Exception("Invalid index")
-        if row == 0:
-            x1 = 0
-            x2 = self.patch_size + self.patch_border
-        else:
-            x1 = (row * self.patch_size) - self.patch_border
-            x2 = ((row + 1) * self.patch_size) + self.patch_border
-        if col == 0:
-            y1 = 0
-            y2 = self.patch_size + self.patch_border
-        else:
-            y1 = (col * self.patch_size) - self.patch_border
-            y2 = ((col + 1) * self.patch_size) + self.patch_border
-        return self._crop_image(self.h5f[mapname][layer], x1, y1, x2, y2)
+        return self._crop_image(self.h5f[mapname][layer], row, col)

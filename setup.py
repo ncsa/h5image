@@ -8,7 +8,7 @@ long_description = (here / 'description.rst').read_text(encoding='utf-8')
 
 setup(
     name='h5image',
-    version='0.2.0',
+    version='0.3.0',
     description='Load and save images to HDF5 files',
     long_description=long_description,
 
@@ -29,6 +29,7 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
     ],
     keywords=['hdf5', 'image', 'map'],
 
