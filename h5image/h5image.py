@@ -402,14 +402,25 @@ class H5Image:
         for shape in json_data['shapes']:
             if shape['label'] == layer:
                 points = shape['points']
-                w = abs(points[1][1] - points[0][1])
-                h = abs(points[1][0] - points[0][0])
-                x1 = min(points[0][1], points[1][1])
-                y1 = min(points[0][0], points[1][0])
+                w = int(abs(points[0][1] - points[1][1]))
+                h = int(abs(points[0][0] - points[1][0]))
+                x1 = int(min(points[0][1], points[1][1]))
+                y1 = int(min(points[0][0], points[1][0]))
                 x2 = x1 + w
                 y2 = y1 + h
                 # points in array are floats
-                return self._crop_image(self.h5f[mapname]['map'], int(x1), int(y1), int(x2), int(y2))
+                src = np.s_[int(x1):int(x2), int(y1):int(y2)]
+                dset = self.h5f[mapname]['map']
+                if len(dset.shape) == 3 and dset.shape[2] == 3:
+                    rgb = np.zeros((w, h, 3), dtype=np.uint8)
+                else:
+                    rgb = np.zeros((w, h), dtype=np.uint8)
+                try:
+                    dset.read_direct(rgb, src)
+                except TypeError as e:
+                    logging.warn(f"{x1}, {x2}, {y1}, {y2}")
+                    logging.error(f"Error reading {dset.name} : {e}")
+                return rgb
         return None
 
     # get patch by index
