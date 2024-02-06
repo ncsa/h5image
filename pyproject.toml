@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "h5image"
+version = "0.4.0"
+authors = [
+  {name="Rob Kooper", email="kooper@illinois.edu"},
+]
+maintainers = [
+  { name="Rob Kooper", email="kooper@illinois.edu" },
+]
+description = "Load and save images to HDF5 files"
+keywords = ["hdf5", "image", "map"]
+readme = "README.md"
+requires-python = ">=3.6"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Operating System :: OS Independent",
+]
+dependencies=[
+    "affine",
+    "h5py",
+    "numpy",
+    "rasterio",
+]
+
+[project.optional-dependencies]
+dev = ["matplotlib"]
+
+[project.scripts]
+h5create = "h5image:h5create"
+
+[project.urls]
+Homepage = "https://git.ncsa.illinois.edu/criticalmaas/h5image"
+Issues = "https://git.ncsa.illinois.edu/criticalmaas/h5image/-/issues"
+

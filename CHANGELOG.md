@@ -7,9 +7,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - [ ] Add ability to read patches using h5folder
 - [ ] Catch exception when reading bad legend
 
+## 0.4.0 - 2024-02-05
+
+### Fixed
+- did not correctly fetch legends for non rectangle shapes
+
 ## 0.3.0 - 2024-01-04
 
-### Chnaged
+### Changed
 - now computes tile_size (= patch_size - 2 * patch_border)
 - saves h5image in {patch}/{border}/name.h5
 

@@ -137,7 +137,6 @@ class H5Image:
             print("File not found", filename)
             return None
         with rasterio.open(filename) as src:
-            profile = src.profile
             image = src.read()
             if len(image.shape) == 3:
                 if image.shape[0] == 1:
@@ -155,10 +154,10 @@ class H5Image:
                 dset.attrs.create('IMAGE_SUBCLASS', 'IMAGE_GRAYSCALE', dtype='S15')
             else:
                 raise Exception("Unknown image type")
-            if 'crs' in profile:
+            if src.profile.get('crs'):
                 txt = src.profile['crs'].to_string()
                 dset.attrs.create('CRS', txt, dtype=f'S{len(txt)}')
-            if 'transform' in profile:
+            if src.profile.get('transform'):
                 txt = affine.dumpsw(src.profile['transform'])
                 dset.attrs.create('TRANSFORM', txt, dtype=f'S{len(txt)}')
             return dset
@@ -402,14 +401,26 @@ class H5Image:
         for shape in json_data['shapes']:
             if shape['label'] == layer:
                 points = shape['points']
-                w = abs(points[1][1] - points[0][1])
-                h = abs(points[1][0] - points[0][0])
-                x1 = min(points[0][1], points[1][1])
-                y1 = min(points[0][0], points[1][0])
-                x2 = x1 + w
-                y2 = y1 + h
+                y, x = zip(*points)
+                x1 = min(x)
+                x2 = max(x)
+                y1 = min(y)
+                y2 = max(y)
+                w = abs(x2 - x1)
+                h = abs(y2 - y1)
                 # points in array are floats
-                return self._crop_image(self.h5f[mapname]['map'], int(x1), int(y1), int(x2), int(y2))
+                src = np.s_[int(x1):int(x2), int(y1):int(y2)]
+                dset = self.h5f[mapname]['map']
+                if len(dset.shape) == 3 and dset.shape[2] == 3:
+                    rgb = np.zeros((int(w), int(h), 3), dtype=np.uint8)
+                else:
+                    rgb = np.zeros((int(w), int(h)), dtype=np.uint8)
+                try:
+                    dset.read_direct(rgb, src)
+                except TypeError as e:
+                    logging.warn(f"{x1}, {x2}, {y1}, {y2}")
+                    logging.error(f"Error reading {dset.name} : {e}")
+                return rgb
         return None
 
     # get patch by index
