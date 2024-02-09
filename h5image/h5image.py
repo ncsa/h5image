@@ -137,7 +137,6 @@ class H5Image:
             print("File not found", filename)
             return None
         with rasterio.open(filename) as src:
-            profile = src.profile
             image = src.read()
             if len(image.shape) == 3:
                 if image.shape[0] == 1:
@@ -155,10 +154,10 @@ class H5Image:
                 dset.attrs.create('IMAGE_SUBCLASS', 'IMAGE_GRAYSCALE', dtype='S15')
             else:
                 raise Exception("Unknown image type")
-            if 'crs' in profile:
+            if src.profile.get('crs'):
                 txt = src.profile['crs'].to_string()
                 dset.attrs.create('CRS', txt, dtype=f'S{len(txt)}')
-            if 'transform' in profile:
+            if src.profile.get('transform'):
                 txt = affine.dumpsw(src.profile['transform'])
                 dset.attrs.create('TRANSFORM', txt, dtype=f'S{len(txt)}')
             return dset
@@ -402,12 +401,13 @@ class H5Image:
         for shape in json_data['shapes']:
             if shape['label'] == layer:
                 points = shape['points']
-                w = int(abs(points[0][1] - points[1][1]))
-                h = int(abs(points[0][0] - points[1][0]))
-                x1 = int(min(points[0][1], points[1][1]))
-                y1 = int(min(points[0][0], points[1][0]))
-                x2 = x1 + w
-                y2 = y1 + h
+                y, x = zip(*points)
+                x1 = int(min(x))
+                x2 = int(max(x))
+                y1 = int(min(y))
+                y2 = int(max(y))
+                w = abs(x2 - x1)
+                h = abs(y2 - y1)
                 # points in array are floats
                 src = np.s_[int(x1):int(x2), int(y1):int(y2)]
                 dset = self.h5f[mapname]['map']
@@ -419,7 +419,7 @@ class H5Image:
                     dset.read_direct(rgb, src)
                 except TypeError as e:
                     logging.warn(f"{x1}, {x2}, {y1}, {y2}")
-                    logging.error(f"Error reading {dset.name} : {e}")
+                    logging.error(f"Error reading legend {dset.name} : {e}")
                 return rgb
         return None
 
