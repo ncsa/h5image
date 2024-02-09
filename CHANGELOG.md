@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - [ ] Add ability to read patches using h5folder
 - [ ] Catch exception when reading bad legend
 
+## 0.4.1 - 2024-02-08
+
+### Fixed
+- error in rounding when extracting legend from map
+
 ## 0.4.0 - 2024-02-05
 
 ### Fixed
