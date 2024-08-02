@@ -20,7 +20,7 @@ This package will create HDF5 files with the following structure:
 Installation
 ------------
 
-Install using pip
+Install using pip:
 
 ```
 pip install h5image
