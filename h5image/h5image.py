@@ -163,6 +163,56 @@ class H5Image:
             return dset
         return None
 
+    def add_layer(self, mapname, layername, filename):
+        """
+        Add a layer to the map. The layer is assumed to be a tiff file.
+        :param mapname: the name of the map
+        :param layername: the name of the layer
+        :param filename: the tiff file to load
+        """
+        # make sure file is writeable
+        if self.mode == 'r':
+            raise Exception("Cannot add layer to read-only file")
+
+        # check image file exists
+        if not os.path.exists(filename):
+            raise Exception("Image file not found")
+
+        # get the map and compute the number of patches
+        dset = self.get_layer(mapname, "map")
+        w = math.ceil(dset.shape[0] / self.tile_size)
+        h = math.ceil(dset.shape[1] / self.tile_size)
+
+        # load the image and add it to the group
+        group = self.h5f[mapname]
+        all_patches = json.loads(group.attrs.get('patches', '{}'))
+        layers_patch = json.loads(group.attrs.get('layers_patch', {}))
+        patches = []
+        dset = self._add_image(filename, layername, group)
+        if dset:
+            for x in range(w):
+                for y in range(h):
+                    rgb = self._crop_image(dset, x, y)
+                    if np.average(rgb, axis=(0, 1)) > 0:
+                        patches.append((x, y))
+                        layers_patch.setdefault(f"{x}_{y}", []).append(layername)
+            dset.attrs.update({'patches': json.dumps(patches)})
+            all_patches[layername] = patches
+        else:
+            raise ValueError("Error loading layer {filename}")
+
+        # update the group
+        valid_patches = [[int(k.split('_')[0]), int(k.split('_')[1])] for k in layers_patch.keys()]
+        if valid_patches:
+            r1 = min(valid_patches, key=lambda value: int(value[0]))[0]
+            r2 = max(valid_patches, key=lambda value: int(value[0]))[0]
+            c1 = min(valid_patches, key=lambda value: int(value[1]))[1]
+            c2 = max(valid_patches, key=lambda value: int(value[1]))[1]
+            group.attrs.update({'corners': [[r1, c1], [r2, c2]]})
+        group.attrs.update({'patches': json.dumps(all_patches)})
+        group.attrs.update({'layers_patch': json.dumps(layers_patch)})
+        group.attrs.update({'valid_patches': json.dumps(valid_patches)})
+
     # add an image to the file
     def add_image(self, filename, folder="", mapname=""):
         """

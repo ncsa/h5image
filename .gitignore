@@ -4,4 +4,5 @@ __pycache__
 h5image.egg-info
 dist
 build
-h5create.*
+*.o[0-9]*
+*.e[0-9]*

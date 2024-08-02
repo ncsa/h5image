@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - [ ] Add ability to read patches using h5folder
 - [ ] Catch exception when reading bad legend
 
+## 0.5.0 - 2024-06-26
+
+### Added
+- add function `add_layer` to add a new layer to an H5image
+
 ## 0.4.1 - 2024-02-08
 
 ### Fixed
